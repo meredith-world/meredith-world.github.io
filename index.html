@@ -1,1 +1,355 @@
-Hi!
+
+
+
+<!DOCTYPE html>
+<html>
+<head>
+
+    <style>
+        body {
+            background-color:  #c8e1ffff;      
+        }
+    canvas {
+ display: block;
+ margin: 0;
+ position: absolute;
+ top: 50%;
+ left: 50%;
+ transform: translate(-50%, -50%);
+        border: solid 10px #097cc4ff;
+}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.15.1/dist/phaser-arcade-physics.js"></script>
+</head>
+<body>
+
+
+    
+    <script>
+    // TODO: add music.
+        
+    var gameWidth = 800;
+        
+    var config = {
+    type: Phaser.AUTO,
+    width: gameWidth,
+    height: 600,
+    physics: {
+        default: 'arcade',
+        arcade: {
+            gravity: { y: 300 },
+            debug: false
+        }
+    },
+    scene: {
+        preload: preload,
+        create: create,
+        update: update
+    }
+};
+
+var player;
+var stars;
+var bombs;
+var platforms;
+var cursors;
+var score = 0;
+var gameOver = false;
+var scoreText;
+
+var game = new Phaser.Game(config);
+        
+var generated_to_x = 0;
+
+function preload ()
+{
+   this.load.spritesheet('dude', 'assets/my_dude.svg', { frameWidth: 32, frameHeight: 48 });
+    this.load.image('background', 'assets/background.svg');
+
+    this.load.spritesheet('tile', 'assets/tile_animation.svg', {frameWidth: 10, frameHeight: 10});
+    this.load.image('block', 'assets/block.svg.png');
+    
+    this.load.audio('music', 'assets/2018-07-02_-_Tears_of_Joy_-_David_Fesliyan.mp3');
+}
+
+function touchCongratulationPixel (player, pixel)
+{
+    if (!pixel.touched) {
+        pixel.anims.play('rotate_tile', true);
+        pixel.touched = true;
+    }
+   // pixel.
+}
+
+        
+function generate_congratulation(this_, start_x, start_y) {
+
+    
+    var picture = [
+        "                                                                                                      ",
+        " #     #                                     ######                                                   ",
+        " #     #    ##    #####   #####   #   #      #     #  #  #####   #####  #    #  #####     ##    #   # ",
+        " #     #   #  #   #    #  #    #   # #       #     #  #  #    #    #    #    #  #    #   #  #    # #  ",
+        " #######  #    #  #    #  #    #    #        ######   #  #    #    #    ######  #    #  #    #    #   ",
+        " #     #  ######  #####   #####     #        #     #  #  #####     #    #    #  #    #  ######    #   ",
+        " #     #  #    #  #       #         #        #     #  #  #   #     #    #    #  #    #  #    #    #   ",
+        " #     #  #    #  #       #         #        ######   #  #    #    #    #    #  #####   #    #    #   ",
+        "                                                                                                      "
+    ]
+    
+    var doubled = [
+    ];
+    for (var row_id = 0; row_id < picture.length; ++row_id) {
+        new_row = ""
+        for (var char_id = 0; char_id < picture[row_id].length; ++char_id) {
+            char = picture[row_id][char_id]   
+            new_row += char
+            new_row += char
+        }
+        doubled.push(new_row);
+        doubled.push(new_row);
+    }
+    picture = doubled;
+    
+    congratulation_pixels = this_.physics.add.staticGroup();
+    
+    scale_factorX = 0.25;
+    scale_factorY = 0.5;
+    
+    sprite_width = 10 * scale_factorX;
+    sprite_height = 10 * scale_factorY;
+    
+    
+    
+    this_.pixels = []
+    
+    console.log("create");
+    
+    for (var row_id = 0; row_id < picture.length; ++row_id) {
+        for (var char_id = 0; char_id < picture[row_id].length; ++char_id) {
+            var is_active = picture[row_id][char_id] == "#";
+            
+
+                        
+            if (is_active) {
+                let pixel = congratulation_pixels.create(start_x + sprite_width * char_id, start_y + sprite_height * row_id, "tile")
+                //pixel.setScale(scale_factorX, scale_factorY).refreshBody();
+                this_.pixels.push(pixel);
+                pixel.touched = false;
+                
+                this_.time.addEvent({
+                    delay: Phaser.Math.Between(0, 10000),
+                    callback: ()=>{
+                                pixel.anims.play('rotate_tile', true);
+                    },
+                    loop: false
+                })
+            }   
+        }
+    }
+}
+        
+function create ()
+{
+    this_ = this;
+ 
+    sfx = this.sound.add('music');
+    sfx.play();
+    
+    platforms = this.physics.add.staticGroup();
+    
+    
+    
+    //  A simple background for our game
+    image = this.add.image(-2000, -500, 'background');
+    image.setOrigin(0);
+    image.setScale(100)
+    //image.refreshBody();
+        
+    // Build level 1.
+    
+    first_level_x_end = 3000
+    
+    this.add.text(900, 300, 'Life can be a challenge...', { fontSize: '32px', fill: '#FFF' });
+    
+    for (x = -1500; x <= first_level_x_end; x += 40) {
+        platforms.create(x, 500, 'block');
+    }
+    
+    
+    this.add.text(first_level_x_end, 300, 'and sometimes you\n' +
+                                                '               have to take risks\n' + 
+                                                '                              without knowing where they can lead you...', { fontSize: '32px', fill: '#FFF' })
+    .setOrigin(0.9);
+    
+    
+    
+    // Build vertical wall.
+    x = -500;
+    for (y = 460; y > -500; y -= 40) {
+        // TODO: turn or make invisible
+        platforms.create(x, y, 'block');
+    }    
+    
+    // TODO: add mountain here
+    
+    
+    // Build level 2.
+    second_level_y = 1500;
+    second_level_x_end = first_level_x_end + 1300
+    for (x = first_level_x_end-1500; x <= second_level_x_end; x += 40) {
+        platforms.create(x, second_level_y, 'block');
+    }
+    
+    fly_threshold_x = second_level_x_end
+    
+    stop_threshold = second_level_x_end + 1200
+    
+    this.add.text(second_level_x_end, second_level_y-300, 'but only in this way one day you may...', { fontSize: '32px', fill: '#FFF' }).setOrigin(0.9);
+    
+    
+    this.add.text(second_level_x_end + 600, second_level_y-150, '...learn to fly!', { fontSize: '32px', fill: '#FFF' }).setOrigin(0.0);
+    
+    
+    // Build vertical wall.
+    x = first_level_x_end - 800;
+    for (y = 1500-40; y > 1000; y -= 40) {
+        // TODO: turn or make invisible
+        platforms.create(x, y, 'block');
+    }    
+
+    player = this.physics.add.sprite(100, 450, 'dude');
+    // player = this.physics.add.sprite(second_level_x_end, second_level_y-100, 'dude');
+    
+    camera = this.cameras.main
+    camera.centerOn(player.x + 500, player.y);
+    camera.startFollow(player);
+    camera.setFollowOffset(-200, 100);
+    camera.setLerp(0.1, 1);
+    camera.setDeadzone(200, 0);
+    
+
+    // The player and its settings
+    
+        //  Player physics properties. Give the little guy a slight bounce.
+    player.setBounce(0.2);
+
+    //  Our player animations, turning, walking left and walking right.
+    this.anims.create({
+        key: 'left',
+        frames: this.anims.generateFrameNumbers('dude', { start: 0, end: 3 }),
+        frameRate: 10,
+        repeat: -1
+    });
+
+    this.anims.create({
+        key: 'turn',
+        frames: [ { key: 'dude', frame: 4 } ],
+        frameRate: 20
+    });
+    
+    this.anims.create({
+        key: 'right',
+        frames: this.anims.generateFrameNumbers('dude', { start: 5, end: 8 }),
+        frameRate: 10,
+        repeat: -1
+    });
+    
+    this_.anims.create({
+        key: 'rotate_tile',
+        frames: this_.anims.generateFrameNumbers('tile', { start: 0, end: 9}),
+        frameRate: 20,
+        repeat: true
+    });
+
+    //  Input Events
+    cursors = this.input.keyboard.createCursorKeys();
+    				
+
+    this.physics.add.collider(player, platforms);
+    
+    is_gravity_enabled = true
+    stopped = false;
+    music_playing = false;
+}
+
+function update ()
+{
+    if (game.sound.context.state === 'suspended') {
+					game.sound.context.resume();
+        if (!music_playing) {
+            sfx.play();
+            music_playing=true;
+        }
+}
+    
+    if (is_gravity_enabled && player.x > fly_threshold_x) {
+        is_gravity_enabled = false;
+        player.body.setAllowGravity(false);
+        player.setDrag(0, 0.9);
+        player.setDamping(true);
+        player.setVelocityX(100);
+    }
+    
+
+    if (!stopped && player.x > stop_threshold) {
+        player.setVelocityX(0);
+        player.setVelocityY(0);
+        stopped = true;
+        
+        // TODO: draw column by column based on current player position;
+        generate_congratulation(this, player.x - 150, player.y - 120);
+        
+        
+        player.anims.play('turn');
+    }
+    
+    if (cursors.left.isDown)
+    {
+        if (is_gravity_enabled) {
+            player.setVelocityX(-160);
+            player.anims.play('left', true);
+        } else{
+            //player.setVelocityX(-50);
+            //player.anims.play('left', true);
+        }
+    }
+    else if (cursors.right.isDown)
+    {
+        if (is_gravity_enabled) {
+            player.setVelocityX(160);
+            player.anims.play('right', true);
+        } else{
+            //player.setVelocityX(50);
+            //player.anims.play('right', true);
+        }        
+    }
+    else
+    {
+        if (is_gravity_enabled) {
+            player.setVelocityX(0);
+            player.anims.play('turn');
+        }
+    }
+
+    if (is_gravity_enabled) {
+        if (cursors.up.isDown && player.body.touching.down)
+        {
+            player.setVelocityY(-330);
+        }
+    } else {
+        if (cursors.up.isDown && !stopped)
+        {
+            player.setVelocityY(-25);
+        } 
+        if (cursors.down.isDown && !stopped)
+        {
+            player.setVelocityY(+25);
+        } 
+    }
+    
+}
+</script>
+
+</body>
+</html>
